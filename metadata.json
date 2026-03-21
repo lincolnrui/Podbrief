@@ -1,0 +1,5 @@
+{
+  "name": "PodBrief",
+  "description": "Daily AI-generated summaries of YouTube podcast channels with a chat interface.",
+  "requestFramePermissions": []
+}
