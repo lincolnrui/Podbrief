@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { ai } from '../lib/gemini';
-import { ArrowLeft, PlayCircle, Loader2, Send, Bot, User, MessageSquare, AlertCircle } from 'lucide-react';
+import { ArrowLeft, PlayCircle, Loader2, Send, Bot, User, MessageSquare, AlertCircle, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 
@@ -14,6 +13,7 @@ function decodeHtml(html: string) {
 
 export default function EpisodeDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [episode, setEpisode] = useState<any>(null);
   const [transcript, setTranscript] = useState<string>('');
   const [isTranscriptLoading, setIsTranscriptLoading] = useState(false);
@@ -21,6 +21,7 @@ export default function EpisodeDetail() {
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchEpisode() {
@@ -70,36 +71,47 @@ export default function EpisodeDetail() {
       const systemInstruction = `You are an AI assistant for a podcast briefing tool. Answer the user's questions based ONLY on this specific podcast episode context:\n\nChannel: ${episode.channels?.name}\nTitle: ${episode.title}\nSummary: ${episode.summary}\nKey Points: ${episode.key_points.join(', ')}\n\nFull Transcript:\n${transcript}`;
       
       const contents = [
-        ...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-        { role: 'user', parts: [{ text: userMessage }] }
+        ...messages.map(m => ({ role: m.role, text: m.text })),
+        { role: 'user', text: userMessage }
       ];
 
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
-        contents: contents as any,
-        config: {
-          systemInstruction,
-        }
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: contents,
+          systemInstruction: systemInstruction
+        })
       });
 
-      setMessages(prev => [...prev, { role: 'model', text: '' }]);
+      const data = await response.json();
 
-      for await (const chunk of responseStream) {
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastIndex = newMessages.length - 1;
-          newMessages[lastIndex] = {
-            ...newMessages[lastIndex],
-            text: newMessages[lastIndex].text + chunk.text
-          };
-          return newMessages;
-        });
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get chat response");
       }
+
+      setMessages(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error processing your request.' }]);
     } finally {
       setIsChatLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!episode || !id) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from('episodes').delete().eq('id', id);
+      if (error) throw error;
+      navigate('/');
+    } catch (err) {
+      console.error("Failed to delete episode:", err);
+      setIsDeleting(false);
     }
   }
 
@@ -138,10 +150,20 @@ export default function EpisodeDetail() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Feed
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Feed
+        </Link>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+        >
+          {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          Delete Episode
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: Details & Video */}

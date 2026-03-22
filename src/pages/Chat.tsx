@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { ai } from '../lib/gemini';
 import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -49,55 +48,29 @@ Key Points: ${ep.key_points.join(', ')}
     setIsLoading(true);
 
     try {
-      const systemInstruction = `You are an AI assistant for a podcast briefing tool. Answer the user's questions based on the following recent podcast episodes context:\n\n${context}`;
-      
-      const chat = ai.chats.create({
-        model: 'gemini-3.1-pro-preview',
-        config: {
-          systemInstruction,
-        }
-      });
-
-      // We need to send previous messages to maintain history if we want, 
-      // but ai.chats.create manages history internally if we keep the instance.
-      // Since we recreate it here, it only knows the system instruction and current message.
-      // Let's pass the history.
-      const history = messages.map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-      }));
-
-      const chatWithHistory = ai.chats.create({
-        model: 'gemini-3.1-pro-preview',
-        config: {
-          systemInstruction,
-        },
-        // @ts-ignore - history is supported but types might be strict
-      });
-
-      // Actually, to pass history in @google/genai, we can just use generateContentStream with contents array
       const contents = [
-        ...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-        { role: 'user', parts: [{ text: userMessage }] }
+        ...messages.map(m => ({ role: m.role, text: m.text })),
+        { role: 'user', text: userMessage }
       ];
 
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3.1-pro-preview',
-        contents: contents as any,
-        config: {
-          systemInstruction,
-        }
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: contents,
+          context: context
+        })
       });
 
-      setMessages(prev => [...prev, { role: 'model', text: '' }]);
+      const data = await response.json();
 
-      for await (const chunk of responseStream) {
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].text += chunk.text;
-          return newMessages;
-        });
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get chat response");
       }
+
+      setMessages(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error processing your request.' }]);

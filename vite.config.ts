@@ -3,25 +3,10 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
-function replaceProcessEnvPlugin(geminiKey: string | undefined) {
-  return {
-    name: 'replace-process-env',
-    transform(code: string, id: string) {
-      if (code.includes('process.env.GEMINI_API_KEY')) {
-        return {
-          code: code.replace(/process\.env\.GEMINI_API_KEY/g, JSON.stringify(geminiKey || '')),
-          map: null
-        };
-      }
-    }
-  };
-}
-
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
-  const geminiKey = env.GEMINI_API_KEY || process.env['GEMINI_API_KEY'];
   return {
-    plugins: [react(), tailwindcss(), replaceProcessEnvPlugin(geminiKey)],
+    plugins: [react(), tailwindcss()],
     define: {
       'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
       'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),

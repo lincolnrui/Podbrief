@@ -27,6 +27,7 @@ export default function Feed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'all'>('week');
 
   useEffect(() => {
     document.title = "Podcast Briefing";
@@ -45,6 +46,9 @@ export default function Feed() {
   }, []);
 
   async function seedChannelsIfEmpty() {
+    const hasSeeded = localStorage.getItem('has_seeded_channels');
+    if (hasSeeded) return;
+
     const { data, error } = await supabase.from('channels').select('id').limit(1);
     if (error) {
       console.error("Error checking channels:", error);
@@ -53,6 +57,7 @@ export default function Feed() {
     if (data.length === 0) {
       await supabase.from('channels').insert(INITIAL_CHANNELS);
     }
+    localStorage.setItem('has_seeded_channels', 'true');
   }
 
   async function fetchChannels() {
@@ -85,13 +90,17 @@ export default function Feed() {
     setFetchProgress('Fetching latest videos from YouTube...');
     try {
       let totalProcessed = 0;
+      let failedChannels: string[] = [];
+      
       for (const channel of channels) {
         setFetchProgress(`Checking channel: ${channel.name}...`);
         const res = await fetch(`/api/youtube/latest?channelId=${channel.youtube_channel_id}`);
         const ytData = await res.json();
         
         if (!res.ok) {
-          throw new Error(ytData.error || 'Failed to fetch YouTube data');
+          console.error(`Failed to fetch YouTube data for ${channel.name}:`, ytData.error);
+          failedChannels.push(channel.name);
+          continue;
         }
 
         if (ytData.items) {
@@ -153,6 +162,11 @@ export default function Feed() {
           }
         }
       }
+      
+      if (failedChannels.length > 0) {
+        setError(`Failed to fetch data for: ${failedChannels.join(', ')}. The channel IDs might be invalid or YouTube is rate-limiting.`);
+      }
+      
       setFetchProgress(totalProcessed > 0 ? `Successfully processed ${totalProcessed} new videos!` : 'No new videos found.');
       setTimeout(() => setFetchProgress(''), 3000);
     } catch (err: any) {
@@ -186,6 +200,19 @@ export default function Feed() {
     );
   }
 
+  const filteredEpisodes = episodes.filter(ep => {
+    if (selectedChannelId && ep.channel_id !== selectedChannelId) return false;
+    
+    const pubDate = new Date(ep.published_at).getTime();
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    
+    if (timeFilter === 'today') return now - pubDate <= day;
+    if (timeFilter === 'week') return now - pubDate <= 7 * day;
+    if (timeFilter === 'month') return now - pubDate <= 30 * day;
+    return true;
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
       {/* Sidebar */}
@@ -204,6 +231,30 @@ export default function Feed() {
                 }`}
               >
                 <span className="text-sm font-medium">{channel.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-100 mb-4 mt-8">Time Filter</h2>
+          <div className="space-y-2">
+            {[
+              { id: 'today', label: 'Last 24 Hours' },
+              { id: 'week', label: 'Last 7 Days' },
+              { id: 'month', label: 'Last 30 Days' },
+              { id: 'all', label: 'All Time' }
+            ].map(filter => (
+              <button 
+                key={filter.id} 
+                onClick={() => setTimeFilter(filter.id as any)}
+                className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
+                  timeFilter === filter.id 
+                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200' 
+                    : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className="text-sm font-medium">{filter.label}</span>
               </button>
             ))}
           </div>
@@ -243,12 +294,12 @@ export default function Feed() {
         )}
 
         <div className="space-y-6">
-          {(selectedChannelId ? episodes.filter(ep => ep.channel_id === selectedChannelId) : episodes).length === 0 ? (
+          {filteredEpisodes.length === 0 ? (
             <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 border-dashed">
-              <p className="text-zinc-400">No episodes yet. Click "Fetch Latest" to get started.</p>
+              <p className="text-zinc-400">No episodes found for the selected filters.</p>
             </div>
           ) : (
-            (selectedChannelId ? episodes.filter(ep => ep.channel_id === selectedChannelId) : episodes).map(episode => (
+            filteredEpisodes.map(episode => (
               <Link 
                 key={episode.id} 
                 to={`/episode/${episode.id}`}

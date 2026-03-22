@@ -13,23 +13,39 @@ export default async function handler(req: any, res: any) {
 
   // 1. Try to get exact duration from YouTube API
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyAriygxPpbvUDCelrK4Km1dM79BLuHa2FE';
-    const ytRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${apiKey}`);
-    if (ytRes.ok) {
-      const ytData = await ytRes.json();
-      if (ytData.items && ytData.items.length > 0) {
-        const durationIso = ytData.items[0].contentDetails.duration;
-        const match = durationIso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-        if (match) {
-          const hours = parseInt(match[1] || '0', 10);
-          const minutes = parseInt(match[2] || '0', 10);
-          const seconds = parseInt(match[3] || '0', 10);
-          durationSeconds = hours * 3600 + minutes * 60 + seconds;
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (apiKey) {
+      const ytRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${apiKey}`);
+      if (ytRes.ok) {
+        const ytData = await ytRes.json();
+        if (ytData.items && ytData.items.length > 0) {
+          const durationIso = ytData.items[0].contentDetails.duration;
+          const match = durationIso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+          if (match) {
+            const hours = parseInt(match[1] || '0', 10);
+            const minutes = parseInt(match[2] || '0', 10);
+            const seconds = parseInt(match[3] || '0', 10);
+            durationSeconds = hours * 3600 + minutes * 60 + seconds;
+          }
         }
       }
     }
   } catch (e) {
     console.warn("Could not fetch duration from YT API:", e);
+  }
+
+  // 1.5. Fallback: Scrape duration from YouTube page HTML if API failed
+  if (durationSeconds === 0) {
+    try {
+      const htmlRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+      const html = await htmlRes.text();
+      const match = html.match(/"lengthSeconds":"(\d+)"/);
+      if (match && match[1]) {
+        durationSeconds = parseInt(match[1], 10);
+      }
+    } catch (e) {
+      console.warn("Could not scrape duration from HTML:", e);
+    }
   }
 
   // 2. Try to get transcript

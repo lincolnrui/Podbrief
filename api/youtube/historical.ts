@@ -2,18 +2,21 @@ import { XMLParser } from "fast-xml-parser";
 
 export default async function handler(req: any, res: any) {
   const channelId = req.query.channelId as string;
+  const days = parseInt(req.query.days as string) || 30;
+  
   if (!channelId) {
     return res.status(400).json({ error: "channelId is required" });
   }
 
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-  const publishedAfter = oneDayAgo.toISOString();
+  const pastDate = new Date();
+  pastDate.setDate(pastDate.getDate() - days);
+  const publishedAfter = pastDate.toISOString();
 
   try {
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (apiKey) {
-      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=1&type=video&videoDuration=long&publishedAfter=${publishedAfter}`;
+      // Fetch up to 50 videos from the past 30 days
+      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=50&type=video&videoDuration=long&publishedAfter=${publishedAfter}`;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -41,7 +44,7 @@ export default async function handler(req: any, res: any) {
     
     const entries = result.feed?.entry || [];
     const recentEntries = (Array.isArray(entries) ? entries : [entries])
-      .filter((entry: any) => new Date(entry.published) >= oneDayAgo);
+      .filter((entry: any) => new Date(entry.published) >= pastDate);
 
     const items = [];
     for (const entry of recentEntries) {
@@ -63,18 +66,19 @@ export default async function handler(req: any, res: any) {
         snippet: {
           title: entry.title,
           publishedAt: entry.published,
+          description: entry['media:group']?.['media:description'] || '',
           thumbnails: {
             high: { url: entry['media:group']?.['media:thumbnail']?.['@_url'] || '' }
           }
         }
       });
 
-      if (items.length >= 2) break; // Limit to 2 valid videos
+      if (items.length >= 15) break; // Limit to 15 valid videos
     }
 
     return res.status(200).json({ items });
   } catch (error) {
-    console.error("Error fetching YouTube data:", error);
+    console.error("Error fetching YouTube historical data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
