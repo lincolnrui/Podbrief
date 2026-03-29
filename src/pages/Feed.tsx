@@ -202,14 +202,37 @@ export default function Feed() {
             const videoId = item.id.videoId;
             if (!videoId) continue;
 
+            const decodedTitle = decodeHtml(item.snippet.title);
+
             const { data: existing } = await supabase
               .from('episodes')
-              .select('id')
+              .select('id, transcript_segments')
               .eq('youtube_video_id', videoId)
               .single();
-              
+
+            if (existing && !existing.transcript_segments) {
+              // Episode exists but has no transcript (was added on Vercel without one).
+              // Try to fetch the transcript now and update the DB so Deep Synthesis works.
+              try {
+                setFetchProgress(`Fetching transcript for: ${decodedTitle.substring(0, 40)}...`);
+                const tRes = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
+                if (tRes.ok) {
+                  const td = await tRes.json();
+                  if (td.segments?.length > 0) {
+                    await supabase
+                      .from('episodes')
+                      .update({ transcript_segments: td.segments })
+                      .eq('id', existing.id);
+                    totalProcessed++;
+                  }
+                }
+              } catch {
+                // Silently ignore — transcript may still be unavailable
+              }
+              continue;
+            }
+
             if (!existing) {
-              const decodedTitle = decodeHtml(item.snippet.title);
               try {
                 setFetchProgress(`Summarizing: ${decodedTitle.substring(0, 40)}...`);
                 const summaryData = await summarizeVideo(videoId, decodedTitle, item.snippet.description);
@@ -234,19 +257,17 @@ export default function Feed() {
                 totalProcessed++;
                 // Update UI progressively
                 await fetchEpisodes();
-                
+
                 // Add a small delay to avoid hitting rate limits
                 await new Promise(resolve => setTimeout(resolve, 2000));
               } catch (e: any) {
                 console.error(`Failed to summarize video ${videoId}:`, e);
-                // Don't throw, just continue to the next video
                 if (e.message === 'VIDEO_TOO_SHORT' || e.message === 'NO_TRANSCRIPT') {
                   setSkippedVideos(prev => [...prev, decodedTitle]);
                   continue;
                 }
                 if (e.message.includes('429') || e.message.includes('quota') || e.message.includes('exhausted')) {
                   setError(`Rate limit reached. Please wait a minute before fetching more videos.`);
-                  // Break out of the loops if we hit a rate limit
                   setFetchProgress(totalProcessed > 0 ? `Stopped early due to rate limits. Processed ${totalProcessed} videos.` : 'Stopped due to rate limits.');
                   setTimeout(() => setFetchProgress(''), 5000);
                   setIsFetching(false);
