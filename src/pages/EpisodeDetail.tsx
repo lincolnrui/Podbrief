@@ -97,7 +97,13 @@ export default function EpisodeDetail() {
   }, [messages]);
 
   async function generateSynthesis() {
-    if (segments.length === 0 || isSynthesizing) return;
+    if (isSynthesizing) return;
+    if (segments.length === 0) {
+      setSynthesisError(isTranscriptLoading
+        ? 'Transcript is still loading — please wait a moment and try again.'
+        : 'No transcript available for this episode.');
+      return;
+    }
     setIsSynthesizing(true);
     setSynthesisError(null);
     try {
@@ -355,6 +361,19 @@ Formatting rules:
                     </div>
                     <button onClick={generateSynthesis} className="text-sm text-primary hover:text-primary/80 transition-colors">
                       Try again
+                    </button>
+                  </div>
+                )}
+
+                {!isSynthesizing && !synthesisError && synthesisInsights.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                    <Sparkles className="w-8 h-8 text-muted-foreground/20" />
+                    <p className="text-sm text-muted-foreground">Click Deep Synthesis to generate an AI analysis of this episode.</p>
+                    <button
+                      onClick={generateSynthesis}
+                      className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                    >
+                      Generate now
                     </button>
                   </div>
                 )}
