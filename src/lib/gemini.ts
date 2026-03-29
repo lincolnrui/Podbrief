@@ -1,12 +1,14 @@
 export async function summarizeVideo(videoId: string, title?: string, description?: string) {
   let transcriptText = "";
   let durationSeconds = 0;
+  let segments: { text: string; offset: number }[] = [];
   try {
     const res = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
     if (res.ok) {
       const data = await res.json();
       transcriptText = data.text;
       durationSeconds = data.durationSeconds || 0;
+      segments = data.segments || [];
     }
   } catch (err) {
     console.warn("Could not fetch transcript for video", videoId, err);
@@ -41,5 +43,5 @@ export async function summarizeVideo(videoId: string, title?: string, descriptio
     throw new Error(data.error || "Failed to summarize video");
   }
 
-  return data;
+  return { ...data, segments };
 }
