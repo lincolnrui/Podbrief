@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 import { summarizeVideo } from '../lib/gemini';
 import { Loader2, Trash2, Plus, AlertCircle, Youtube } from 'lucide-react';
 
@@ -10,11 +11,13 @@ function decodeHtml(html: string) {
 }
 
 export default function Channels() {
+  const { user } = useAuth();
   const [channels, setChannels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backfillProgress, setBackfillProgress] = useState<string | null>(null);
+  const [skippedVideos, setSkippedVideos] = useState<string[]>([]);
 
   // Form state
   const [name, setName] = useState('');
@@ -66,15 +69,17 @@ export default function Channels() {
     setIsSubmitting(true);
     setError(null);
     setBackfillProgress(null);
+    setSkippedVideos([]);
 
     try {
       const { data, error: insertError } = await supabase
         .from('channels')
         .insert([
-          { 
-            name: name.trim(), 
-            youtube_channel_id: trimmedId, 
-            description: description.trim() 
+          {
+            name: name.trim(),
+            youtube_channel_id: trimmedId,
+            description: description.trim(),
+            user_id: user!.id
           }
         ])
         .select();
@@ -121,15 +126,16 @@ export default function Channels() {
                     thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
                     summary: summaryData.summary,
                     key_points: summaryData.key_points,
-                    fetched_at: new Date().toISOString()
+                    fetched_at: new Date().toISOString(),
+                    user_id: user!.id
                   });
                   processed++;
                   // Small delay to prevent rate limits
                   await new Promise(resolve => setTimeout(resolve, 2000));
                 } catch (e: any) {
                   console.error(`Failed to summarize video ${videoId}:`, e);
-                  if (e.message === 'VIDEO_TOO_SHORT') {
-                    console.log(`Skipping video ${videoId} because it is too short.`);
+                  if (e.message === 'VIDEO_TOO_SHORT' || e.message === 'NO_TRANSCRIPT') {
+                    setSkippedVideos(prev => [...prev, decodedTitle]);
                   } else if (e.message.includes('429') || e.message.includes('quota')) {
                     setBackfillProgress(`Stopped early due to rate limits. Processed ${processed} videos.`);
                     break;
@@ -210,6 +216,20 @@ export default function Channels() {
         <div className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-4 py-3 rounded-xl flex items-center gap-3">
           <Loader2 className="w-5 h-5 shrink-0 animate-spin" />
           <p className="text-sm">{backfillProgress}</p>
+        </div>
+      )}
+
+      {skippedVideos.length > 0 && (
+        <div className="bg-zinc-800/50 border border-zinc-700 text-zinc-400 px-4 py-3 rounded-xl">
+          <p className="text-sm font-medium text-zinc-300 mb-1">Skipped {skippedVideos.length} video{skippedVideos.length > 1 ? 's' : ''} (no transcript available):</p>
+          <ul className="space-y-0.5">
+            {skippedVideos.map((title, i) => (
+              <li key={i} className="text-sm flex items-start gap-2">
+                <span className="text-zinc-600 mt-0.5">•</span>
+                <span className="truncate">{title}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 import { summarizeVideo } from '../lib/gemini';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCw, PlayCircle, Loader2, AlertCircle } from 'lucide-react';
+import { RefreshCw, PlayCircle, Loader2, AlertCircle, PlusCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function decodeHtml(html: string) {
@@ -11,23 +12,41 @@ function decodeHtml(html: string) {
   return txt.value;
 }
 
-const INITIAL_CHANNELS = [
-  { name: 'All-In Podcast', youtube_channel_id: 'UCESLZhusAkFfsNsApnjF_Cg', description: 'All-In Podcast' },
-  { name: 'a16z', youtube_channel_id: 'UC9cn0TuPq4dnbTY-CBsm8XA', description: 'a16z' },
-  { name: '20VC', youtube_channel_id: 'UCf0PBRjhf0rF8fWBIxTuoWA', description: '20VC' },
-  { name: 'Latent Space', youtube_channel_id: 'UCxBcwypKK-W3GHd_RZ9FZrQ', description: 'Latent Space' },
-  { name: 'No Priors', youtube_channel_id: 'UCSI7h9hydQ40K5MJHnCrQvw', description: 'No Priors' },
-];
+function extractVideoId(input: string): { id: string; isShort: boolean } | null {
+  const trimmed = input.trim();
+  if (trimmed.includes('youtube.com/shorts/')) {
+    const m = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+    return m ? { id: m[1], isShort: true } : null;
+  }
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+  for (const p of patterns) {
+    const m = trimmed.match(p);
+    if (m) return { id: m[1], isShort: false };
+  }
+  return null;
+}
 
 export default function Feed() {
+  const { user } = useAuth();
   const [channels, setChannels] = useState<any[]>([]);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchProgress, setFetchProgress] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [skippedVideos, setSkippedVideos] = useState<string[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'all'>('week');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [addVideoError, setAddVideoError] = useState<string | null>(null);
+  const [addVideoSuccess, setAddVideoSuccess] = useState<string | null>(null);
+  const [addVideoEpisodeId, setAddVideoEpisodeId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Podcast Briefing";
@@ -37,28 +56,12 @@ export default function Feed() {
         return;
       }
       setLoading(true);
-      await seedChannelsIfEmpty();
       await fetchChannels();
       await fetchEpisodes();
       setLoading(false);
     }
     init();
   }, []);
-
-  async function seedChannelsIfEmpty() {
-    const hasSeeded = localStorage.getItem('has_seeded_channels');
-    if (hasSeeded) return;
-
-    const { data, error } = await supabase.from('channels').select('id').limit(1);
-    if (error) {
-      console.error("Error checking channels:", error);
-      return;
-    }
-    if (data.length === 0) {
-      await supabase.from('channels').insert(INITIAL_CHANNELS);
-    }
-    localStorage.setItem('has_seeded_channels', 'true');
-  }
 
   async function fetchChannels() {
     const { data } = await supabase.from('channels').select('*').order('name');
@@ -84,9 +87,99 @@ export default function Feed() {
     if (data) setEpisodes(data);
   }
 
+  async function handleAddVideo() {
+    setAddVideoError(null);
+    setAddVideoSuccess(null);
+    const parsed = extractVideoId(videoUrl);
+    if (!parsed) {
+      setAddVideoError("Couldn't find a YouTube video ID in that URL.");
+      return;
+    }
+    if (parsed.isShort) {
+      setAddVideoError("Shorts aren't supported — paste a full episode URL.");
+      return;
+    }
+    const { id: videoId } = parsed;
+    setIsAddingVideo(true);
+    try {
+      // Check duplicate
+      const { data: existing } = await supabase
+        .from('episodes')
+        .select('id')
+        .eq('youtube_video_id', videoId)
+        .single();
+      if (existing) {
+        setAddVideoError('This video is already in your library.');
+        setIsAddingVideo(false);
+        return;
+      }
+
+      // Fetch transcript + metadata
+      const tRes = await fetch(`/api/youtube/transcript?videoId=${videoId}`);
+      const td = await tRes.json();
+
+      if (td.durationSeconds > 0 && td.durationSeconds < 1200) {
+        setAddVideoError('This video is too short (under 20 minutes).');
+        return;
+      }
+      if (!td.text || td.text.length < 1000) {
+        setAddVideoError('No transcript available for this video.');
+        return;
+      }
+
+      // Match against tracked channels
+      const matchedChannel = channels.find(c => c.youtube_channel_id === td.channelId) || null;
+
+      // Summarize
+      const sRes = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId,
+          title: td.videoTitle || videoId,
+          transcriptText: td.text,
+          durationSeconds: td.durationSeconds,
+        }),
+      });
+      const summaryData = await sRes.json();
+      if (!sRes.ok) {
+        if (summaryData.error === 'VIDEO_TOO_SHORT') {
+          setAddVideoError('This video is too short (under 20 minutes).');
+          return;
+        }
+        throw new Error(summaryData.error || 'Summarization failed');
+      }
+
+      // Insert episode
+      const { data: inserted, error: insertError } = await supabase.from('episodes').insert({
+        channel_id: matchedChannel?.id ?? null,
+        channel_name: matchedChannel ? null : (td.channelTitle || 'Unknown Channel'),
+        youtube_video_id: videoId,
+        title: td.videoTitle || videoId,
+        published_at: td.publishedAt || new Date().toISOString(),
+        thumbnail_url: td.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        summary: summaryData.summary,
+        key_points: summaryData.key_points,
+        fetched_at: new Date().toISOString(),
+        user_id: user!.id,
+      }).select('id').single();
+      if (insertError) throw new Error(insertError.message);
+
+      setVideoUrl('');
+      setAddVideoSuccess(td.videoTitle || 'Episode');
+      setAddVideoEpisodeId(inserted.id);
+      await fetchEpisodes();
+    } catch (err: any) {
+      setAddVideoError(err.message || 'Something went wrong.');
+    } finally {
+      setIsAddingVideo(false);
+    }
+  }
+
   async function handleFetchAndSummarize() {
     setIsFetching(true);
     setError(null);
+    setSkippedVideos([]);
     setFetchProgress('Fetching latest videos from YouTube...');
     try {
       let totalProcessed = 0;
@@ -94,7 +187,7 @@ export default function Feed() {
       
       for (const channel of channels) {
         setFetchProgress(`Checking channel: ${channel.name}...`);
-        const res = await fetch(`/api/youtube/latest?channelId=${channel.youtube_channel_id}`);
+        const res = await fetch(`/api/youtube/historical?channelId=${channel.youtube_channel_id}&days=30`);
         const ytData = await res.json();
         
         if (!res.ok) {
@@ -127,7 +220,8 @@ export default function Feed() {
                   thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
                   summary: summaryData.summary,
                   key_points: summaryData.key_points,
-                  fetched_at: new Date().toISOString()
+                  fetched_at: new Date().toISOString(),
+                  user_id: user!.id
                 });
                 if (insertError) {
                   if (insertError.message.includes('row-level security')) {
@@ -144,8 +238,8 @@ export default function Feed() {
               } catch (e: any) {
                 console.error(`Failed to summarize video ${videoId}:`, e);
                 // Don't throw, just continue to the next video
-                if (e.message === 'VIDEO_TOO_SHORT') {
-                  console.log(`Skipping video ${videoId} because it is too short.`);
+                if (e.message === 'VIDEO_TOO_SHORT' || e.message === 'NO_TRANSCRIPT') {
+                  setSkippedVideos(prev => [...prev, decodedTitle]);
                   continue;
                 }
                 if (e.message.includes('429') || e.message.includes('quota') || e.message.includes('exhausted')) {
@@ -200,13 +294,19 @@ export default function Feed() {
     );
   }
 
+  const standaloneCount = episodes.filter(ep => !ep.channel_id).length;
+
   const filteredEpisodes = episodes.filter(ep => {
-    if (selectedChannelId && ep.channel_id !== selectedChannelId) return false;
-    
+    if (selectedChannelId === '__standalone__') {
+      if (ep.channel_id) return false;
+    } else if (selectedChannelId) {
+      if (ep.channel_id !== selectedChannelId) return false;
+    }
+
     const pubDate = new Date(ep.published_at).getTime();
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
-    
+
     if (timeFilter === 'today') return now - pubDate <= day;
     if (timeFilter === 'week') return now - pubDate <= 7 * day;
     if (timeFilter === 'month') return now - pubDate <= 30 * day;
@@ -221,18 +321,31 @@ export default function Feed() {
           <h2 className="text-lg font-semibold text-zinc-100 mb-4">Tracked Channels</h2>
           <div className="space-y-2">
             {channels.map(channel => (
-              <button 
-                key={channel.id} 
+              <button
+                key={channel.id}
                 onClick={() => setSelectedChannelId(selectedChannelId === channel.id ? null : channel.id)}
                 className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
-                  selectedChannelId === channel.id 
-                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200' 
+                  selectedChannelId === channel.id
+                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200'
                     : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
                 }`}
               >
                 <span className="text-sm font-medium">{channel.name}</span>
               </button>
             ))}
+            {standaloneCount > 0 && (
+              <button
+                onClick={() => setSelectedChannelId(selectedChannelId === '__standalone__' ? null : '__standalone__')}
+                className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
+                  selectedChannelId === '__standalone__'
+                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200'
+                    : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className="text-sm font-medium">✦ My Picks</span>
+                <span className="text-xs text-zinc-500">{standaloneCount}</span>
+              </button>
+            )}
           </div>
         </div>
         
@@ -265,9 +378,11 @@ export default function Feed() {
       <div className="lg:col-span-3 space-y-6">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
           <h1 className="text-2xl font-bold tracking-tight">
-            {selectedChannelId 
-              ? `${channels.find(c => c.id === selectedChannelId)?.name} Briefings` 
-              : 'Latest Briefings'}
+            {selectedChannelId === '__standalone__'
+              ? 'My Picks'
+              : selectedChannelId
+                ? `${channels.find(c => c.id === selectedChannelId)?.name} Briefings`
+                : 'Latest Briefings'}
           </h1>
           <button
             onClick={handleFetchAndSummarize}
@@ -277,6 +392,48 @@ export default function Feed() {
             {isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {isFetching ? 'Processing...' : 'Fetch Latest'}
           </button>
+        </div>
+
+        {/* Add single video by URL */}
+        <div className="space-y-2">
+          <form
+            onSubmit={e => { e.preventDefault(); handleAddVideo(); }}
+            className="flex gap-2"
+          >
+            <input
+              type="text"
+              value={videoUrl}
+              onChange={e => { setVideoUrl(e.target.value); setAddVideoError(null); setAddVideoSuccess(null); setAddVideoEpisodeId(null); }}
+              placeholder="Paste any YouTube URL to add a single video..."
+              className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-zinc-600"
+              disabled={isAddingVideo}
+            />
+            <button
+              type="submit"
+              disabled={!videoUrl.trim() || isAddingVideo}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 whitespace-nowrap"
+            >
+              {isAddingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+              {isAddingVideo ? 'Processing...' : 'Add Video'}
+            </button>
+          </form>
+          {addVideoError && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{addVideoError}
+            </p>
+          )}
+          {addVideoSuccess && (
+            <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+              <span>✓</span>
+              <span><strong>"{addVideoSuccess}"</strong> is ready!{' '}
+                {addVideoEpisodeId && (
+                  <Link to={`/episode/${addVideoEpisodeId}`} className="underline hover:text-emerald-300 transition-colors">
+                    Take a look here →
+                  </Link>
+                )}
+              </span>
+            </p>
+          )}
         </div>
 
         {fetchProgress && (
@@ -290,6 +447,20 @@ export default function Feed() {
           <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-200">{error}</p>
+          </div>
+        )}
+
+        {skippedVideos.length > 0 && (
+          <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl">
+            <p className="text-sm font-medium text-zinc-300 mb-1">Skipped {skippedVideos.length} video{skippedVideos.length > 1 ? 's' : ''} (no transcript available):</p>
+            <ul className="space-y-0.5">
+              {skippedVideos.map((title, i) => (
+                <li key={i} className="text-sm text-zinc-400 flex items-start gap-2">
+                  <span className="text-zinc-600 mt-0.5">•</span>
+                  <span>{title}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -319,7 +490,7 @@ export default function Feed() {
                   </div>
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
-                      <span className="text-indigo-400">{episode.channels?.name}</span>
+                      <span className="text-indigo-400">{episode.channels?.name || episode.channel_name || 'Unknown Channel'}</span>
                       <span>•</span>
                       <span>{formatDistanceToNow(new Date(episode.published_at), { addSuffix: true })}</span>
                     </div>

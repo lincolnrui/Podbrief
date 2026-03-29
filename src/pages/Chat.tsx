@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function Chat() {
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
@@ -120,8 +121,8 @@ Key Points: ${ep.key_points.join(', ')}
                 {msg.role === 'user' ? (
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 ) : (
-                  <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800">
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-table:border-collapse prose-td:border prose-td:border-zinc-700 prose-td:px-3 prose-td:py-1 prose-th:border prose-th:border-zinc-700 prose-th:px-3 prose-th:py-1">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                   </div>
                 )}
               </div>

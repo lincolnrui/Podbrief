@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://localhost:3000/api/summarize -H \"Content-Type: application/json\" -d '{\"\"videoId\"\":\"\"iiBY0fqpThI\"\",\"\"title\"\":\"\"133. 对谢赛宁的7小时马拉松访谈\"\",\"\"description\"\":\"\"2026年春节，在中国机器人登上春晚的喜乐时分...\"\",\"\"transcriptText\"\":\"\"\"\",\"\"durationSeconds\"\":24330}')",
+      "Bash(curl -s https://openrouter.ai/api/v1/models -H \"Authorization: Bearer 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\" -o /tmp/models.json)",
+      "Bash(node -e \":*)",
+      "Bash(curl -s https://openrouter.ai/api/v1/models -H \"Authorization: Bearer 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\" -o \"$TEMP/models.json\")",
+      "Bash(node -e \"const d=require\\(''fs''\\).readFileSync\\(process.env.TEMP+''/models.json'',''utf8''\\);const free=JSON.parse\\(d\\).data.filter\\(m=>m.id.endsWith\\('':free''\\)\\).map\\(m=>m.id\\);console.log\\(free.join\\(''\\\\n''\\)\\);\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{try{const r=JSON.parse\\(d\\);console.log\\(r.choices?.[0]?.message?.content||r.error||d\\)}catch\\(e\\){console.log\\(d\\)}}\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{try{const r=JSON.parse\\(d\\);console.log\\(r.choices?.[0]?.message?.content||JSON.stringify\\(r.error\\)||d\\)}catch\\(e\\){console.log\\(d\\)}}\\)\")",
+      "Bash(for model:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $model ===\")",
+      "Bash(curl -s -X POST https://openrouter.ai/api/v1/chat/completions -H \"Authorization: Bearer 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\" -H \"Content-Type: application/json\" -d \"{\"\"model\"\":\"\"$model\"\",\"\"messages\"\":[{\"\"role\"\":\"\"user\"\",\"\"content\"\":\"\"Say hi\"\"}],\"\"max_tokens\"\":10}\")",
+      "Bash(done)",
+      "Bash(grep -n \"openrouter\\\\|from ''ai''\" /c/Users/LincolnWang/PodcastPro/server.ts)",
+      "Bash(curl -s https://api.minimax.io/anthropic/v1/models -H \"x-api-key: sk-api-v8eDE4ONE8Xx9HhxcBR66AklrGZh78liLKycFdzfo8kdGbrwQMG6MoGHwY6v1ZoJKZZtgQuRv0xkHMJSYtJ2EmjslfEGvtuzJ63i1jbCGtT9y8QPfZGaLkc\" -H \"anthropic-version: 2023-06-01\")",
+      "Bash(curl -s https://api.minimax.io/v1/models -H \"Authorization: Bearer sk-api-v8eDE4ONE8Xx9HhxcBR66AklrGZh78liLKycFdzfo8kdGbrwQMG6MoGHwY6v1ZoJKZZtgQuRv0xkHMJSYtJ2EmjslfEGvtuzJ63i1jbCGtT9y8QPfZGaLkc\")",
+      "Bash(curl -s https://api.minimaxi.chat/v1/models -H \"Authorization: Bearer sk-api-v8eDE4ONE8Xx9HhxcBR66AklrGZh78liLKycFdzfo8kdGbrwQMG6MoGHwY6v1ZoJKZZtgQuRv0xkHMJSYtJ2EmjslfEGvtuzJ63i1jbCGtT9y8QPfZGaLkc\")",
+      "WebFetch(domain:platform.minimax.io)",
+      "Bash(grep -n \"openrouter\\\\|from ''ai''\\\\|from ''zod''\" /c/Users/LincolnWang/PodcastPro/server.ts)",
+      "Bash(curl -s \"http://localhost:3000/api/youtube/transcript?videoId=iiBY0fqpThI\" -o \"$TEMP/t1.json\")",
+      "Bash(node -e \"const r=JSON.parse\\(require\\(''fs''\\).readFileSync\\(process.env.TEMP+''/t1.json''\\)\\);console.log\\(''Video1 - duration:'',r.durationSeconds,''transcript length:'',r.text?.length\\)\")",
+      "Bash(curl -s \"http://localhost:3000/api/youtube/transcript?videoId=rIwgZWzUKm8\" -o \"$TEMP/t2.json\")",
+      "Bash(node -e \"const r=JSON.parse\\(require\\(''fs''\\).readFileSync\\(process.env.TEMP+''/t2.json''\\)\\);console.log\\(''Video2 - duration:'',r.durationSeconds,''transcript length:'',r.text?.length\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 28456 /F)",
+      "Bash(cmd /c \"taskkill /PID 28456 /F\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(cmd /c \"taskkill /F /PID 28456 2>&1\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd /c \"taskkill /F /IM node.exe /T 2>&1 & taskkill /F /IM tsx.exe /T 2>&1\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\"3000\\\\|24678\"\"\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\"LISTEN\"\"\")",
+      "Bash(cmd /c \"netstat -ano | findstr 24678\")",
+      "Bash(cmd /c \"wmic process where \"\"name=''node.exe''\"\" get processid,commandline 2>&1\")",
+      "Bash(cmd /c \"tasklist | findstr node\")",
+      "Bash(cmd /c \"netstat -ano\")",
+      "Bash(PORT=3001 npm run dev)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\LincolnWang\\PodcastPro",
+      "C:\\Users\\LincolnWang\\.claude\\projects\\c--Users-LincolnWang-PodcastPro\\memory"
+    ]
+  }
+}
