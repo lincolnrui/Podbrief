@@ -95,6 +95,7 @@ export default function Channels() {
                     thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
                     summary: summaryData.summary,
                     key_points: summaryData.key_points,
+                    transcript_segments: summaryData.segments?.length > 0 ? summaryData.segments : null,
                     fetched_at: new Date().toISOString(),
                     user_id: user!.id
                   });

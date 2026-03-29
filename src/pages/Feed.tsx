@@ -160,6 +160,7 @@ export default function Feed() {
         thumbnail_url: td.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         summary: summaryData.summary,
         key_points: summaryData.key_points,
+        transcript_segments: td.segments?.length > 0 ? td.segments : null,
         fetched_at: new Date().toISOString(),
         user_id: user!.id,
       }).select('id').single();
@@ -220,6 +221,7 @@ export default function Feed() {
                   thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
                   summary: summaryData.summary,
                   key_points: summaryData.key_points,
+                  transcript_segments: summaryData.segments?.length > 0 ? summaryData.segments : null,
                   fetched_at: new Date().toISOString(),
                   user_id: user!.id
                 });

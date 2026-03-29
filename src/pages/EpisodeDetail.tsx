@@ -73,13 +73,21 @@ export default function EpisodeDetail() {
         if (data.synthesis?.length > 0) {
           setSynthesisInsights(data.synthesis);
         }
+        // Use stored segments immediately if available (works on Vercel where live fetch is blocked)
+        if (data.transcript_segments?.length > 0) {
+          setSegments(data.transcript_segments);
+          setTranscript(data.transcript_segments.map((s: Segment) => s.text).join(' '));
+        }
+        // Also try live fetch — works on local dev, updates segments if fresher
         setIsTranscriptLoading(true);
         try {
           const res = await fetch(`/api/youtube/transcript?videoId=${data.youtube_video_id}`);
           if (res.ok) {
             const td = await res.json();
-            setTranscript(td.text || '');
-            if (td.segments?.length > 0) setSegments(td.segments);
+            if (td.segments?.length > 0) {
+              setSegments(td.segments);
+              setTranscript(td.text || '');
+            }
           }
         } catch (err) {
           console.warn('Could not fetch transcript', err);
