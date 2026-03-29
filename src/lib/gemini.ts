@@ -14,12 +14,6 @@ export async function summarizeVideo(videoId: string, title?: string, descriptio
     console.warn("Could not fetch transcript for video", videoId, err);
   }
 
-  // Skip videos with no transcript — if the same episode is published in
-  // multiple languages, we only want the version that has captions.
-  if (!transcriptText) {
-    throw new Error("NO_TRANSCRIPT");
-  }
-
   const response = await fetch('/api/summarize', {
     method: 'POST',
     headers: {

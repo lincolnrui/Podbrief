@@ -20,8 +20,9 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'VIDEO_TOO_SHORT' });
   }
 
-  if (durationSeconds === 0) {
-    if (!transcriptText || transcriptText.length < 4000) {
+  if (durationSeconds === 0 && (!transcriptText || transcriptText.length < 4000)) {
+    // No duration AND no transcript — skip only if there's also no description to fall back on
+    if (!description || description.length < 100) {
       return res.status(400).json({ error: 'VIDEO_TOO_SHORT' });
     }
   }

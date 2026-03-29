@@ -358,9 +358,9 @@ async function startServer() {
     }
     
     // Fallback check based on transcript length if duration is missing
-    if (durationSeconds === 0) {
-      // If transcript is missing entirely, or it's too short, assume it's a Short or invalid
-      if (!transcriptText || transcriptText.length < 4000) {
+    if (durationSeconds === 0 && (!transcriptText || transcriptText.length < 4000)) {
+      // No duration AND no transcript — skip only if there's also no description to fall back on
+      if (!description || description.length < 100) {
         return res.status(400).json({ error: "VIDEO_TOO_SHORT" });
       }
     }
