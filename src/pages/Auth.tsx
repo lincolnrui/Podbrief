@@ -42,68 +42,71 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
+
+        {/* Logo + title */}
         <div className="text-center">
-          <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="font-bold text-white text-2xl">P</span>
+          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4 shadow-md">
+            <span className="font-bold text-primary-foreground text-2xl leading-none">P</span>
           </div>
-          <h1 className="text-2xl font-bold text-zinc-100">PodBrief</h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-foreground">PodcastPro</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             {mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+        {/* Card */}
+        <div className="bg-white border border-border rounded-2xl p-6 space-y-4 shadow-md">
           {error && (
-            <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+            <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               {error}
             </div>
           )}
           {message && (
-            <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+            <div className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
               {message}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-zinc-100"
                 placeholder="you@example.com"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground/50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Password</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-zinc-100"
                 placeholder="••••••••"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground/50"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {mode === 'signin' ? 'Sign In' : 'Sign Up'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-zinc-500">
+          <p className="text-center text-sm text-muted-foreground">
             {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-            <button onClick={switchMode} className="text-indigo-400 hover:text-indigo-300 transition-colors">
+            <button onClick={switchMode} className="text-primary hover:text-primary/80 font-medium transition-colors">
               {mode === 'signin' ? 'Sign Up' : 'Sign In'}
             </button>
           </p>

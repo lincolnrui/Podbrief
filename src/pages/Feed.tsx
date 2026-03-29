@@ -49,7 +49,7 @@ export default function Feed() {
   const [addVideoEpisodeId, setAddVideoEpisodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Podcast Briefing";
+    document.title = "PodcastPro";
     async function init() {
       if (!isSupabaseConfigured) {
         setLoading(false);
@@ -275,7 +275,7 @@ export default function Feed() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -285,9 +285,9 @@ export default function Feed() {
       <div className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
         <AlertCircle className="w-12 h-12 text-amber-500" />
         <div>
-          <h2 className="text-xl font-bold text-zinc-100 mb-2">Supabase Configuration Required</h2>
-          <p className="text-zinc-400 max-w-md">
-            Please set <code className="text-amber-400 bg-amber-400/10 px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and <code className="text-amber-400 bg-amber-400/10 px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code> in your environment variables to use this application.
+          <h2 className="text-xl font-semibold text-foreground mb-2">Supabase Configuration Required</h2>
+          <p className="text-muted-foreground max-w-md text-sm">
+            Please set <code className="text-amber-600 bg-amber-50 px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and <code className="text-amber-600 bg-amber-50 px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code> in your environment variables.
           </p>
         </div>
       </div>
@@ -314,121 +314,123 @@ export default function Feed() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      {/* Sidebar */}
-      <div className="lg:col-span-1 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+
+      {/* ── Sidebar ── */}
+      <aside className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-100 mb-4">Tracked Channels</h2>
-          <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Channels</p>
+          <div className="space-y-0.5">
             {channels.map(channel => (
               <button
                 key={channel.id}
                 onClick={() => setSelectedChannelId(selectedChannelId === channel.id ? null : channel.id)}
-                className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
+                className={`w-full px-3 py-2 rounded-lg flex items-center justify-between text-left transition-all text-sm ${
                   selectedChannelId === channel.id
-                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200'
-                    : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <span className="text-sm font-medium">{channel.name}</span>
+                {channel.name}
               </button>
             ))}
             {standaloneCount > 0 && (
               <button
                 onClick={() => setSelectedChannelId(selectedChannelId === '__standalone__' ? null : '__standalone__')}
-                className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
+                className={`w-full px-3 py-2 rounded-lg flex items-center justify-between text-left transition-all text-sm ${
                   selectedChannelId === '__standalone__'
-                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200'
-                    : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
+                    ? 'bg-amber-50 text-amber-700 font-semibold'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <span className="text-sm font-medium">✦ My Picks</span>
-                <span className="text-xs text-zinc-500">{standaloneCount}</span>
+                <span>✦ My Picks</span>
+                <span className={`text-xs tabular-nums ${selectedChannelId === '__standalone__' ? 'text-amber-500' : 'text-muted-foreground/60'}`}>{standaloneCount}</span>
               </button>
             )}
           </div>
         </div>
-        
+
+        <div className="h-px bg-border" />
+
         <div>
-          <h2 className="text-lg font-semibold text-zinc-100 mb-4 mt-8">Time Filter</h2>
-          <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Time</p>
+          <div className="space-y-0.5">
             {[
-              { id: 'today', label: 'Last 24 Hours' },
-              { id: 'week', label: 'Last 7 Days' },
-              { id: 'month', label: 'Last 30 Days' },
-              { id: 'all', label: 'All Time' }
+              { id: 'today', label: 'Last 24 hours' },
+              { id: 'week', label: 'Last 7 days' },
+              { id: 'month', label: 'Last 30 days' },
+              { id: 'all', label: 'All time' },
             ].map(filter => (
-              <button 
-                key={filter.id} 
+              <button
+                key={filter.id}
                 onClick={() => setTimeFilter(filter.id as any)}
-                className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-colors ${
-                  timeFilter === filter.id 
-                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-200' 
-                    : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50'
+                className={`w-full px-3 py-2 rounded-lg text-left text-sm transition-all ${
+                  timeFilter === filter.id
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <span className="text-sm font-medium">{filter.label}</span>
+                {filter.label}
               </button>
             ))}
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Feed */}
-      <div className="lg:col-span-3 space-y-6">
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <h1 className="text-2xl font-bold tracking-tight">
+      {/* ── Main Feed ── */}
+      <div className="lg:col-span-3 space-y-5">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {selectedChannelId === '__standalone__'
               ? 'My Picks'
               : selectedChannelId
-                ? `${channels.find(c => c.id === selectedChannelId)?.name} Briefings`
+                ? channels.find(c => c.id === selectedChannelId)?.name
                 : 'Latest Briefings'}
           </h1>
           <button
             onClick={handleFetchAndSummarize}
             disabled={isFetching}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {isFetching ? 'Processing...' : 'Fetch Latest'}
+            {isFetching ? 'Updating...' : 'Fetch Latest'}
           </button>
         </div>
 
-        {/* Add single video by URL */}
+        {/* Add video input */}
         <div className="space-y-2">
-          <form
-            onSubmit={e => { e.preventDefault(); handleAddVideo(); }}
-            className="flex gap-2"
-          >
+          <form onSubmit={e => { e.preventDefault(); handleAddVideo(); }} className="flex gap-2">
             <input
               type="text"
               value={videoUrl}
               onChange={e => { setVideoUrl(e.target.value); setAddVideoError(null); setAddVideoSuccess(null); setAddVideoEpisodeId(null); }}
-              placeholder="Paste any YouTube URL to add a single video..."
-              className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-zinc-600"
+              placeholder="Paste any YouTube URL to add a single episode..."
+              className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all placeholder:text-muted-foreground/50"
               disabled={isAddingVideo}
             />
             <button
               type="submit"
               disabled={!videoUrl.trim() || isAddingVideo}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 whitespace-nowrap"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-border hover:bg-secondary text-foreground rounded-xl font-medium text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              {isAddingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+              {isAddingVideo ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <PlusCircle className="w-4 h-4 text-primary" />}
               {isAddingVideo ? 'Processing...' : 'Add Video'}
             </button>
           </form>
           {addVideoError && (
-            <p className="text-xs text-red-400 flex items-center gap-1.5">
+            <p className="text-xs text-destructive flex items-center gap-1.5 px-1">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />{addVideoError}
             </p>
           )}
           {addVideoSuccess && (
-            <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+            <p className="text-xs text-emerald-600 flex items-center gap-1.5 px-1">
               <span>✓</span>
               <span><strong>"{addVideoSuccess}"</strong> is ready!{' '}
                 {addVideoEpisodeId && (
-                  <Link to={`/episode/${addVideoEpisodeId}`} className="underline hover:text-emerald-300 transition-colors">
-                    Take a look here →
+                  <Link to={`/episode/${addVideoEpisodeId}`} className="underline underline-offset-2 hover:text-emerald-700 transition-colors">
+                    Read it here →
                   </Link>
                 )}
               </span>
@@ -436,82 +438,92 @@ export default function Feed() {
           )}
         </div>
 
+        {/* Progress / error banners */}
         {fetchProgress && (
-          <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex items-center gap-3">
-            {isFetching && <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />}
-            <p className="text-sm text-indigo-200">{fetchProgress}</p>
+          <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3">
+            {isFetching && <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />}
+            <p className="text-sm text-primary/80">{fetchProgress}</p>
           </div>
         )}
-
         {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-200">{error}</p>
+          <div className="px-4 py-3 bg-destructive/5 border border-destructive/20 rounded-xl flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive/80">{error}</p>
           </div>
         )}
-
         {skippedVideos.length > 0 && (
-          <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl">
-            <p className="text-sm font-medium text-zinc-300 mb-1">Skipped {skippedVideos.length} video{skippedVideos.length > 1 ? 's' : ''} (no transcript available):</p>
+          <div className="px-4 py-3 bg-secondary border border-border rounded-xl">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Skipped {skippedVideos.length} video{skippedVideos.length > 1 ? 's' : ''} — no transcript available</p>
             <ul className="space-y-0.5">
               {skippedVideos.map((title, i) => (
-                <li key={i} className="text-sm text-zinc-400 flex items-start gap-2">
-                  <span className="text-zinc-600 mt-0.5">•</span>
-                  <span>{title}</span>
-                </li>
+                <li key={i} className="text-xs text-muted-foreground/70 truncate">· {title}</li>
               ))}
             </ul>
           </div>
         )}
 
-        <div className="space-y-6">
+        {/* Episode list */}
+        <div className="space-y-4">
           {filteredEpisodes.length === 0 ? (
-            <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 border-dashed">
-              <p className="text-zinc-400">No episodes found for the selected filters.</p>
+            <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-white/50">
+              <p className="text-sm text-muted-foreground">No episodes found for the selected filters.</p>
             </div>
           ) : (
             filteredEpisodes.map(episode => (
-              <Link 
-                key={episode.id} 
+              <Link
+                key={episode.id}
                 to={`/episode/${episode.id}`}
-                className="block bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl overflow-hidden group"
+                className="group block bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-border/60 hover:-translate-y-0.5"
               >
                 <div className="flex flex-col sm:flex-row">
-                  <div className="sm:w-64 shrink-0 relative">
-                    <img 
-                      src={episode.thumbnail_url} 
+                  {/* Thumbnail */}
+                  <div className="sm:w-56 shrink-0 relative bg-muted overflow-hidden">
+                    <img
+                      src={episode.thumbnail_url}
                       alt={episode.title}
                       className="w-full h-full object-cover aspect-video sm:aspect-auto"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
-                      <PlayCircle className="w-10 h-10 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <PlayCircle className="w-9 h-9 text-white drop-shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
-                  <div className="p-5 flex-1 flex flex-col">
-                    <div className="flex items-center gap-2 text-xs font-medium text-zinc-400 mb-2">
-                      <span className="text-indigo-400">{episode.channels?.name || episode.channel_name || 'Unknown Channel'}</span>
-                      <span>•</span>
-                      <span>{formatDistanceToNow(new Date(episode.published_at), { addSuffix: true })}</span>
+
+                  {/* Content */}
+                  <div className="p-5 flex-1 flex flex-col min-w-0">
+                    {/* Meta */}
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-xs font-semibold text-primary">
+                        {episode.channels?.name || episode.channel_name || 'Unknown Channel'}
+                      </span>
+                      <span className="text-muted-foreground/40 text-xs">·</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(episode.published_at), { addSuffix: true })}
+                      </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-zinc-100 mb-3 line-clamp-2 group-hover:text-indigo-400 transition-colors">
+
+                    {/* Title */}
+                    <h3 className="text-[15px] font-semibold text-foreground mb-2 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                       {decodeHtml(episode.title)}
                     </h3>
-                    <p className="text-sm text-zinc-400 mb-4 line-clamp-3 leading-relaxed">
+
+                    {/* Summary */}
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
                       {episode.summary}
                     </p>
-                    <div className="mt-auto">
-                      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Key Insights</h4>
-                      <ul className="space-y-1">
+
+                    {/* Key insights */}
+                    <div className="mt-auto pt-3 border-t border-border/50">
+                      <ul className="space-y-1.5">
                         {episode.key_points?.slice(0, 3).map((point: string, i: number) => (
-                          <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
-                            <span className="text-indigo-500 mt-0.5">•</span>
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                            <span className="text-primary/60 mt-0.5 shrink-0">·</span>
                             <span className="line-clamp-1">{point}</span>
                           </li>
                         ))}
                         {episode.key_points?.length > 3 && (
-                          <li className="text-xs text-zinc-500 italic mt-1">
-                            + {episode.key_points.length - 3} more points
+                          <li className="text-xs text-muted-foreground/50 pl-3.5">
+                            +{episode.key_points.length - 3} more
                           </li>
                         )}
                       </ul>

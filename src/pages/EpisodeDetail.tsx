@@ -32,11 +32,11 @@ type SynthesisInsight = {
 type Message = { role: 'user'; text: string } | { role: 'model'; text: string };
 
 const TYPE_META: Record<InsightType, { label: string; icon: string; badge: string; border: string }> = {
-  'hot-take':   { label: 'Hot Take',   icon: '🔥', badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',    border: 'border-rose-500/40' },
-  'debate':     { label: 'Debate',     icon: '⚔️', badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',  border: 'border-amber-500/40' },
-  'data-point': { label: 'Data',       icon: '📊', badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',     border: 'border-blue-500/40' },
-  'prediction': { label: 'Prediction', icon: '🎯', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20', border: 'border-purple-500/40' },
-  'framework':  { label: 'Framework',  icon: '💡', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', border: 'border-emerald-500/40' },
+  'hot-take':   { label: 'Hot Take',   icon: '🔥', badge: 'bg-rose-50 text-rose-600 border-rose-200',         border: 'border-rose-400' },
+  'debate':     { label: 'Debate',     icon: '⚔️', badge: 'bg-amber-50 text-amber-600 border-amber-200',       border: 'border-amber-400' },
+  'data-point': { label: 'Data',       icon: '📊', badge: 'bg-blue-50 text-blue-600 border-blue-200',          border: 'border-blue-400' },
+  'prediction': { label: 'Prediction', icon: '🎯', badge: 'bg-purple-50 text-purple-600 border-purple-200',    border: 'border-purple-400' },
+  'framework':  { label: 'Framework',  icon: '💡', badge: 'bg-emerald-50 text-emerald-600 border-emerald-200', border: 'border-emerald-400' },
 };
 
 export default function EpisodeDetail() {
@@ -69,7 +69,7 @@ export default function EpisodeDetail() {
         .single();
       if (data) {
         setEpisode(data);
-        document.title = `${decodeHtml(data.title)} - Podcast Briefing`;
+        document.title = `${decodeHtml(data.title)} - PodcastPro`;
         if (data.synthesis?.length > 0) {
           setSynthesisInsights(data.synthesis);
         }
@@ -130,7 +130,6 @@ export default function EpisodeDetail() {
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsChatLoading(true);
     try {
-      // Build a condensed timestamp guide so the model can cite timestamps on verbatim quotes
       const timestampGuide = segments.length > 0
         ? '\n\nTimestamp guide (sample every ~20 segments):\n' + segments
             .filter((_, i) => i % 20 === 0)
@@ -189,16 +188,20 @@ Formatting rules:
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-zinc-500" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
 
   if (!isSupabaseConfigured) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
         <AlertCircle className="w-12 h-12 text-amber-500" />
         <div>
-          <h2 className="text-xl font-bold text-zinc-100 mb-2">Supabase Configuration Required</h2>
-          <p className="text-zinc-400 max-w-md">
-            Please set <code className="text-amber-400 bg-amber-400/10 px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and <code className="text-amber-400 bg-amber-400/10 px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code>.
+          <h2 className="text-xl font-bold text-foreground mb-2">Supabase Configuration Required</h2>
+          <p className="text-muted-foreground max-w-md">
+            Please set <code className="text-primary bg-primary/10 px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and <code className="text-primary bg-primary/10 px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code>.
           </p>
         </div>
       </div>
@@ -208,8 +211,8 @@ Formatting rules:
   if (!episode) {
     return (
       <div className="text-center py-12">
-        <p className="text-zinc-400">Episode not found.</p>
-        <Link to="/" className="text-indigo-400 hover:text-indigo-300 mt-4 inline-block">Return to Feed</Link>
+        <p className="text-muted-foreground">Episode not found.</p>
+        <Link to="/" className="text-primary hover:text-primary/80 mt-4 inline-block">Return to Feed</Link>
       </div>
     );
   }
@@ -220,14 +223,32 @@ Formatting rules:
 
   const inSynthesis = activeTab === 'synthesis';
 
+  const keyInsightsList = (episode.key_points as string[])?.map((point, i) => (
+    <li key={i}>
+      <button
+        onClick={() => sendMessage(`Tell me more about this key insight: "${point}"`)}
+        className="w-full text-left flex items-start gap-3 p-3 rounded-xl hover:bg-secondary/60 transition-colors group"
+      >
+        <span className="text-primary mt-0.5 shrink-0 text-base leading-none">•</span>
+        <span className="leading-relaxed text-foreground/80 group-hover:text-foreground transition-colors flex-1 text-sm">{point}</span>
+        <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary shrink-0 mt-0.5 transition-colors" />
+      </button>
+    </li>
+  ));
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
+
+      {/* Nav row */}
       <div className="flex items-center justify-between">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Feed
         </Link>
-        <button onClick={handleDelete} disabled={isDeleting}
-          className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50">
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+        >
           {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           Delete Episode
         </button>
@@ -237,30 +258,32 @@ Formatting rules:
 
         {/* ── LEFT COLUMN ── */}
         <div className="space-y-6">
-          {/* Video: only in left col when NOT in synthesis mode */}
+
+          {/* Video — overview mode */}
           {!inSynthesis && (
-            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-zinc-800 bg-black">
+            <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-md">
               <iframe key={embedSrc} width="100%" height="100%" src={embedSrc} title={episode.title}
                 frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
           )}
 
           <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-zinc-400 mb-3">
-              <span className="text-indigo-400">{episode.channels?.name}</span>
-              <span>•</span>
-              <span>{formatDistanceToNow(new Date(episode.published_at), { addSuffix: true })}</span>
+            {/* Meta */}
+            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+              <span className="text-primary">{episode.channels?.name || episode.channel_name}</span>
+              <span className="text-muted-foreground/50">•</span>
+              <span className="text-muted-foreground">{formatDistanceToNow(new Date(episode.published_at), { addSuffix: true })}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-6 leading-tight">{decodeHtml(episode.title)}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-6 leading-tight">{decodeHtml(episode.title)}</h1>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 border-b border-zinc-800 mb-1">
+            {/* Tabs — pill style */}
+            <div className="flex items-center gap-1 bg-secondary p-1 rounded-full w-fit mb-1">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
                   activeTab === 'overview'
-                    ? 'border-indigo-500 text-indigo-400'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    ? 'bg-white text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Overview
@@ -272,118 +295,107 @@ Formatting rules:
                     generateSynthesis();
                   }
                 }}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-1.5 ${
                   activeTab === 'synthesis'
-                    ? 'border-indigo-500 text-indigo-400'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    ? 'bg-white text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 Deep Synthesis
-                {isSynthesizing && <Loader2 className="w-3 h-3 animate-spin" />}
+                {isSynthesizing && <Loader2 className="w-3 h-3 animate-spin ml-0.5" />}
               </button>
             </div>
 
-            {/* Cute loading message — only text, no layout shift */}
+            {/* Synthesis loading hint */}
             {isSynthesizing && (
-              <p className="text-xs text-zinc-500 italic text-center py-2 mb-4">
+              <p className="text-xs text-muted-foreground italic text-center py-2 mb-4">
                 Doing a deep read of the episode, trying my best — this'll take a moment ✨
               </p>
             )}
 
             {/* ── OVERVIEW TAB ── */}
             {activeTab === 'overview' && (
-              <div className="prose prose-invert prose-zinc max-w-none mt-6">
-                <h3 className="text-lg font-semibold text-zinc-200 mb-3">Summary</h3>
-                <p className="text-zinc-400 leading-relaxed mb-8">{episode.summary}</p>
-
-                <h3 className="text-lg font-semibold text-zinc-200 mb-4">Key Insights</h3>
-                <ul className="space-y-2">
-                  {episode.key_points?.map((point: string, i: number) => (
-                    <li key={i}>
-                      <button onClick={() => sendMessage(`Tell me more about this key insight: "${point}"`)}
-                        className="w-full text-left flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-800/60 transition-colors group">
-                        <span className="text-indigo-500 mt-1 shrink-0">•</span>
-                        <span className="leading-relaxed text-zinc-300 group-hover:text-zinc-100 transition-colors flex-1">{point}</span>
-                        <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-indigo-400 shrink-0 mt-1 transition-colors" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-xs text-zinc-600 mt-2 ml-1">Click any insight to dive deeper in the chat →</p>
+              <div className="mt-6 space-y-6">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground mb-2">Summary</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">{episode.summary}</p>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground mb-3">Key Insights</h3>
+                  <ul className="space-y-1">{keyInsightsList}</ul>
+                  <p className="text-xs text-muted-foreground/60 mt-2 ml-1">Click any insight to dive deeper in the chat →</p>
+                </div>
               </div>
             )}
 
             {/* ── SYNTHESIS TAB ── */}
             {activeTab === 'synthesis' && (
               <div className="mt-6">
-                {/* While loading: show overview content naturally, no empty space */}
+
+                {/* While synthesizing: show overview content */}
                 {isSynthesizing && (
-                  <div className="prose prose-invert prose-zinc max-w-none">
-                    <h3 className="text-lg font-semibold text-zinc-200 mb-3">Summary</h3>
-                    <p className="text-zinc-400 leading-relaxed mb-8">{episode.summary}</p>
-                    <h3 className="text-lg font-semibold text-zinc-200 mb-4">Key Insights</h3>
-                    <ul className="space-y-2">
-                      {episode.key_points?.map((point: string, i: number) => (
-                        <li key={i}>
-                          <button onClick={() => sendMessage(`Tell me more about this key insight: "${point}"`)}
-                            className="w-full text-left flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-800/60 transition-colors group">
-                            <span className="text-indigo-500 mt-1 shrink-0">•</span>
-                            <span className="leading-relaxed text-zinc-300 group-hover:text-zinc-100 transition-colors flex-1">{point}</span>
-                            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-indigo-400 shrink-0 mt-1 transition-colors" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground mb-2">Summary</h3>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{episode.summary}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground mb-3">Key Insights</h3>
+                      <ul className="space-y-1">{keyInsightsList}</ul>
+                    </div>
                   </div>
                 )}
 
                 {!isSynthesizing && synthesisError && (
                   <div className="space-y-4">
-                    <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                    <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                       {synthesisError}
                     </div>
-                    <button onClick={generateSynthesis} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                    <button onClick={generateSynthesis} className="text-sm text-primary hover:text-primary/80 transition-colors">
                       Try again
                     </button>
                   </div>
                 )}
 
                 {!isSynthesizing && !synthesisError && synthesisInsights.length > 0 && (
-                  <div className="space-y-10">
+                  <div className="space-y-8">
                     {synthesisInsights.map((insight, i) => {
                       const meta = TYPE_META[insight.type] ?? TYPE_META['framework'];
                       return (
                         <div key={i} className="space-y-3">
-                          {/* Type badge */}
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${meta.badge}`}>
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${meta.badge}`}>
                             <span>{meta.icon}</span>
                             {meta.label}
                           </span>
-                          <h3 className="text-base font-semibold text-zinc-100 leading-snug">{insight.heading}</h3>
-                          <p className="text-sm text-zinc-400 leading-relaxed">{insight.detail}</p>
+                          <h3 className="text-base font-semibold text-foreground leading-snug">{insight.heading}</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{insight.detail}</p>
 
                           {/* Primary quote */}
                           {insight.quote && (
                             <div className={`border-l-2 ${meta.border} pl-4 space-y-1.5`}>
-                              <p className="text-sm text-zinc-300 italic leading-relaxed">"{insight.quote}"</p>
+                              <p className="text-sm text-foreground/80 italic leading-relaxed">"{insight.quote}"</p>
                               {insight.timestamp && (
-                                <button onClick={() => setSeekSeconds(labelToSeconds(insight.timestamp!))}
-                                  className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 px-2 py-0.5 rounded-md transition-colors font-mono">
+                                <button
+                                  onClick={() => setSeekSeconds(labelToSeconds(insight.timestamp!))}
+                                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/15 border border-primary/20 px-2 py-0.5 rounded-md transition-colors font-mono"
+                                >
                                   <PlayCircle className="w-3 h-3" />{insight.timestamp}
                                 </button>
                               )}
                             </div>
                           )}
 
-                          {/* Second quote — debates only */}
+                          {/* Second quote */}
                           {insight.second_quote && (
-                            <div className="border-l-2 border-zinc-600/60 pl-4 space-y-1.5">
-                              <p className="text-sm text-zinc-400 italic leading-relaxed">"{insight.second_quote}"</p>
+                            <div className="border-l-2 border-border pl-4 space-y-1.5">
+                              <p className="text-sm text-muted-foreground italic leading-relaxed">"{insight.second_quote}"</p>
                               {insight.second_timestamp && (
-                                <button onClick={() => setSeekSeconds(labelToSeconds(insight.second_timestamp!))}
-                                  className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 bg-zinc-700/30 hover:bg-zinc-700/50 border border-zinc-600/30 px-2 py-0.5 rounded-md transition-colors font-mono">
+                                <button
+                                  onClick={() => setSeekSeconds(labelToSeconds(insight.second_timestamp!))}
+                                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border px-2 py-0.5 rounded-md transition-colors font-mono"
+                                >
                                   <PlayCircle className="w-3 h-3" />{insight.second_timestamp}
                                 </button>
                               )}
@@ -402,40 +414,49 @@ Formatting rules:
         {/* ── RIGHT COLUMN ── */}
         <div className="lg:sticky lg:top-24 flex flex-col gap-3 h-auto lg:h-[calc(100vh-8rem)]">
 
-          {/* Video: moves to right col in synthesis mode so it stays visible while scrolling */}
+          {/* Video — synthesis mode */}
           {inSynthesis && (
-            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-zinc-800 bg-black shrink-0">
+            <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-md shrink-0">
               <iframe key={embedSrc} width="100%" height="100%" src={embedSrc} title={episode.title}
                 frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
           )}
 
-          {/* Chat */}
-          <div className={`flex flex-col bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden ${inSynthesis ? 'flex-1 min-h-0' : 'h-[calc(100vh-12rem)] lg:h-full'}`}>
-            <div className="p-4 border-b border-zinc-800 bg-zinc-900/80 shrink-0">
-              <h3 className="font-semibold text-zinc-200 flex items-center gap-2">
-                <Bot className="w-5 h-5 text-indigo-400" />
+          {/* Chat panel */}
+          <div className={`flex flex-col bg-white rounded-2xl border border-border shadow-sm overflow-hidden ${inSynthesis ? 'flex-1 min-h-0' : 'h-[calc(100vh-12rem)] lg:h-full'}`}>
+            <div className="p-4 border-b border-border bg-white shrink-0">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Bot className="w-5 h-5 text-primary" />
                 Ask about this episode
               </h3>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0">
               {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-3">
-                  <MessageSquare className="w-8 h-8 text-zinc-700" />
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
                   <p className="text-center text-sm max-w-[200px]">Ask questions, or click a key insight to dive deeper.</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => (
                   <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-indigo-600' : 'bg-zinc-800 border border-zinc-700'}`}>
-                      {msg.role === 'user' ? <User className="w-3 h-3 text-white" /> : <Bot className="w-3 h-3 text-indigo-400" />}
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                      msg.role === 'user' ? 'bg-primary' : 'bg-secondary border border-border'
+                    }`}>
+                      {msg.role === 'user'
+                        ? <User className="w-3 h-3 text-primary-foreground" />
+                        : <Bot className="w-3 h-3 text-primary" />
+                      }
                     </div>
-                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-zinc-800/80 border border-zinc-700/50 text-zinc-200 rounded-tl-sm'}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                        : 'bg-secondary/60 border border-border text-foreground rounded-tl-sm'
+                    }`}>
                       {msg.role === 'user' ? (
                         <p className="whitespace-pre-wrap">{msg.text}</p>
                       ) : (
-                        <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-table:border-collapse prose-td:border prose-td:border-zinc-700 prose-td:px-2 prose-td:py-1 prose-th:border prose-th:border-zinc-700 prose-th:px-2 prose-th:py-1">
+                        <div className="prose prose-zinc prose-sm max-w-none prose-p:leading-relaxed prose-table:border-collapse prose-td:border prose-td:border-border prose-td:px-2 prose-td:py-1 prose-th:border prose-th:border-border prose-th:px-2 prose-th:py-1">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
@@ -447,23 +468,21 @@ Formatting rules:
                               ol: ({ children }) => <ol className="list-decimal pl-4 mb-3 space-y-1">{children}</ol>,
                               code: ({ children, className }) => {
                                 const content = String(children);
-                                // Render [MM:SS] timestamp markers as seek buttons
                                 if (!className && content.startsWith('ts:')) {
                                   const ts = content.slice(3);
                                   return (
                                     <button
                                       onClick={() => setSeekSeconds(labelToSeconds(ts))}
-                                      className="inline-flex items-center gap-1 text-xs text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 px-1.5 py-0.5 rounded-md font-mono mx-0.5 transition-colors align-middle"
+                                      className="inline-flex items-center gap-1 text-xs text-primary bg-primary/10 hover:bg-primary/15 border border-primary/20 px-1.5 py-0.5 rounded-md font-mono mx-0.5 transition-colors align-middle"
                                     >
                                       <PlayCircle className="w-3 h-3" />{ts}
                                     </button>
                                   );
                                 }
-                                return <code className={`${className || ''} bg-zinc-700/50 px-1 py-0.5 rounded text-xs`}>{children}</code>;
+                                return <code className={`${className || ''} bg-secondary px-1 py-0.5 rounded text-xs`}>{children}</code>;
                               },
                             }}
                           >
-                            {/* Convert [MM:SS] markers to inline code that the custom code component renders as buttons */}
                             {msg.text.replace(/\[(\d+:\d{2}(?::\d{2})?)\]/g, '`ts:$1`')}
                           </ReactMarkdown>
                         </div>
@@ -474,25 +493,32 @@ Formatting rules:
               )}
               {isChatLoading && (
                 <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
-                    <Bot className="w-3 h-3 text-indigo-400" />
+                  <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+                    <Bot className="w-3 h-3 text-primary" />
                   </div>
-                  <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl rounded-tl-sm px-4 py-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                  <div className="bg-secondary/60 border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 bg-zinc-900 border-t border-zinc-800 shrink-0">
+            <div className="p-3 bg-background border-t border-border shrink-0">
               <form onSubmit={e => { e.preventDefault(); sendMessage(input.trim()); }} className="relative">
-                <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
                   placeholder={isTranscriptLoading ? 'Loading transcript...' : 'Ask a question...'}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-zinc-600"
-                  disabled={isChatLoading || isTranscriptLoading} />
-                <button type="submit" disabled={!input.trim() || isChatLoading || isTranscriptLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-indigo-400 disabled:opacity-50 transition-colors">
+                  className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all placeholder:text-muted-foreground/60 text-foreground"
+                  disabled={isChatLoading || isTranscriptLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isChatLoading || isTranscriptLoading}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-primary disabled:opacity-50 transition-colors"
+                >
                   <Send className="w-4 h-4" />
                 </button>
               </form>
